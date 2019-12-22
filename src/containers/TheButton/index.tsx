@@ -13,7 +13,6 @@ import { showToast } from "../../plumbing";
 import { getWeb3 } from "./getWeb3";
 
 import ButtonABI from "./Button.json";
-import { Log } from "web3-core";
 
 const ButtonAddress = "0x4D83de30Ba3c1779288adda0f1C6078Ac7c3238f";
 
@@ -22,7 +21,8 @@ const TheButton: React.FC = () => {
   const [info, setInfo] = useState<InfoProps>();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error>();
-  const [event, setEvent] = useState<string>();
+  const [lastTick, setTick] = useState<number>();
+  const tick = () => setTick(Date.now());
 
   useEffect(() => {
     let web3: Api["web3"];
@@ -40,16 +40,16 @@ const TheButton: React.FC = () => {
           contract
         });
 
-        web3.eth.subscribe("newBlockHeaders", (_, block) => {
-          setEvent(block.hash);
-          showToast(`New block #${block.number}`, {
+        web3.eth.subscribe("newBlockHeaders", (_, {number}) => {
+          tick();
+          showToast(`New block #${number}`, {
             intent: "none",
             icon: "code-block"
           });
         });
 
-        contract.events.allEvents((_: Error, { transactionHash }: Log) => {
-          setEvent(transactionHash);
+        contract.events.allEvents(() => {
+          tick();
           showToast("Something happened!", {
             intent: "warning",
             icon: "warning-sign"
@@ -81,7 +81,7 @@ const TheButton: React.FC = () => {
         }
       );
     }
-  }, [api, event]);
+  }, [api, lastTick]);
 
   const canClaim = info?.expired && info.isYou;
 
@@ -97,10 +97,12 @@ const TheButton: React.FC = () => {
           intent: "success",
           icon: "download"
         });
+        tick();
         setLoading(false);
         return;
       }
       await contract.methods.press_button().send({ from, value: info!.cost });
+      tick();
     } catch (e) {
     } finally {
       setLoading(false);
