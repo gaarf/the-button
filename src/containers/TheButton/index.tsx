@@ -30,6 +30,8 @@ const TheButton: React.FC = () => {
     getWeb3()
       .then(result => (web3 = result), setError)
       .then(async () => {
+        if(!web3) return;
+
         const [account] = await web3.eth.getAccounts();
         const contract = new web3.eth.Contract(ButtonABI, ButtonAddress);
         setApi({
@@ -39,9 +41,11 @@ const TheButton: React.FC = () => {
         });
 
         web3.eth.subscribe("newBlockHeaders", (_, block) => {
-          console.info(block);
           setEvent(block.hash);
-          showToast(`New block #${block.number}`, { icon: "code-block" });
+          showToast(`New block #${block.number}`, {
+            intent: "none",
+            icon: "code-block"
+          });
         });
 
         contract.events.allEvents((_: Error, { transactionHash }: Log) => {
@@ -65,7 +69,7 @@ const TheButton: React.FC = () => {
       const m = "COST,WAIT_TIME,expired,lastParticipant,age".split(",");
       Promise.all(m.map(method => api.contract.methods[method]().call())).then(
         ([cost, waitTime, expired, lastParticipant, age]) => {
-          const i = {
+          setInfo({
             cost,
             ethCost: `${api.web3.utils.fromWei(cost, "ether")} ETH`,
             age: Number(age),
@@ -73,8 +77,7 @@ const TheButton: React.FC = () => {
             expired,
             lastParticipant,
             isYou: lastParticipant === api.account
-          };
-          setInfo(i);
+          });
         }
       );
     }
